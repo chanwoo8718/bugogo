@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>부고 고! (BUGO GO!) - 트레이너 에디션</title>
+    <title>부고 고! (BUGO GO!) - 완성판 에디션</title>
     <style>
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -59,7 +59,7 @@
         .starter-container { display: flex; gap: 15px; margin-top: 20px; }
         .starter-card { background: rgba(26, 26, 46, 0.9); border: 2px solid #0f3460; border-radius: 15px; padding: 15px; cursor: pointer; width: 90px; }
 
-        /* 아이템 인벤토리 바 */
+        /* 인벤토리 상단 바 */
         #item-bar {
             background: rgba(31, 110, 140, 0.4);
             border: 1px solid #00fff0;
@@ -120,7 +120,6 @@
 
         .grass-patch { position: absolute; font-size: 24px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; text-shadow: 0 4px 4px rgba(0,0,0,0.5); transform: translateZ(2px); }
 
-        /* 이름 태그 스타일 추가 */
         .name-tag {
             position: absolute;
             top: -18px;
@@ -167,9 +166,7 @@
             transform: translateZ(10px);
             cursor: pointer;
         }
-        .other-player .name-tag {
-            border-color: #ff007f;
-        }
+        .other-player .name-tag { border-color: #ff007f; }
 
         /* 컨트롤러 */
         #controller { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 160px; margin: 15px auto 0 auto; }
@@ -361,21 +358,21 @@
         // 🔒 [중요] 여기에 내 Firebase Config Key를 붙여넣어 줘!
         // ==========================================
         const firebaseConfig = {
-          apiKey: "AIzaSyD-5ptfN1Y7b-lsBJCZQGC06ZoZKNUUrp8",
-          authDomain: "bugo-1b2cb.firebaseapp.com",
-          databaseURL: "https://bugo-1b2cb-default-rtdb.firebaseio.com",
-          projectId: "bugo-1b2cb",
-          storageBucket: "bugo-1b2cb.firebasestorage.app",
-          messagingSenderId: "30795057635",
-          appId: "1:30795057635:web:56b990f9f2f7e22d2f38d6"
-        };
+            apiKey: "AIzaSyD-5ptfN1Y7b-lsBJCZQGC06ZoZKNUUrp8",
+                authDomain: "bugo-1b2cb.firebaseapp.com",
+              databaseURL: "https://bugo-1b2cb-default-rtdb.firebaseio.com",
+              projectId: "bugo-1b2cb",
+              storageBucket: "bugo-1b2cb.firebasestorage.app",
+              messagingSenderId: "30795057635",
+              appId: "1:30795057635:web:56b990f9f2f7e22d2f38d6"
+            };
 
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
         const myClientId = 'player_' + Math.random().toString(36).substr(2, 9);
         const playerRef = database.ref('players/' + myClientId);
-        let myTrainerName = "트레이너"; // 기본 트레이너 이름 변수
+        let myTrainerName = "트레이너"; 
         // ==========================================
 
         const pokemonDatabase = [
@@ -421,7 +418,7 @@
         let battleActive = false;
         let pvpMode = false; 
         let currentBattleId = null;
-        let pvpListener = null; // PVP 동기화 전용 리스너 객체
+        let pvpListener = null; 
 
         let enemyMaxHP = 0; let enemyCurrentHP = 0;
         let playerMaxHP = 100; let playerCurrentHP = 100;
@@ -451,7 +448,6 @@
             pSprite.id = 'player-sprite';
             pSprite.innerText = '🏃‍♂️';
             
-            // 이름 태그 추가
             const nameTag = document.createElement('div');
             nameTag.className = 'name-tag';
             nameTag.innerText = myTrainerName;
@@ -494,7 +490,6 @@
                     otherEl.className = 'other-player';
                     otherEl.innerText = '🏃';
                     
-                    // 상대방 머리 위에 닉네임 태그 달아주기
                     const otherNameTag = document.createElement('div');
                     otherNameTag.className = 'name-tag';
                     otherNameTag.innerText = other.name || "상대";
@@ -510,13 +505,19 @@
                 });
             });
 
-            // 실시간 PVP 신청 수신 감지기
+            // 실시간 PVP 신청 수신 라이브 감시자
             database.ref('battles').on('value', (snapshot) => {
-                if (battleActive) return; // 이미 대결 중이면 무시
                 const battles = snapshot.val() || {};
                 Object.keys(battles).forEach(bId => {
                     const bData = battles[bId];
                     if (bData.defender === myClientId && bData.status === "pending") {
+                        
+                        // 🛡️ 안전장치: 야생 포켓몬 습격 상태(isSpawned) 또는 배틀 상태(battleActive)일 때는 PVP를 완전 자동거절(차단)
+                        if (isSpawned || battleActive) {
+                            database.ref('battles/' + bId).remove(); // 서버 방 자동 소멸
+                            return;
+                        }
+
                         if (confirm(`⚔️ [${bData.attackerTrainerName}] 트레이너가 실시간 결투를 신청했습니다!\n수락하시겠습니까?`)) {
                             database.ref('battles/' + bId).update({
                                 status: "active",
@@ -530,7 +531,7 @@
                             database.ref('battles/' + bId).remove();
                         }
                     }
-                    if (bData.attacker === myClientId && bData.status === "active" && !battleActive) {
+                    if (bData.attacker === myClientId && bData.status === "active" && pvpMode === false) {
                         enterPvpMode(bId, bData, true);
                     }
                 });
@@ -543,7 +544,7 @@
                 return;
             }
             if (battleActive || isSpawned) {
-                alert("⚠️ 대결 상황 도중에는 신청할 수 없습니다.");
+                alert("⚠️ 야생 포켓몬 조우 혹은 대결 중에는 결투를 신청할 수 없습니다.");
                 return;
             }
             const bId = `pvp_${myClientId}_${targetId}`;
@@ -571,7 +572,6 @@
             document.body.classList.add('battle-mode');
             document.getElementById('game-box').classList.add('battle-active');
 
-            // 리스너 충돌 방지를 위해 기존 리스너 off 처리 후 재할당
             if (pvpListener) database.ref('battles/' + bId).off('value', pvpListener);
 
             pvpListener = database.ref('battles/' + bId).on('value', (snapshot) => {
@@ -607,7 +607,6 @@
                 document.getElementById('skill-2').disabled = !myTurn;
                 document.getElementById('skill-3').disabled = !myTurn;
 
-                // 승패 실시간 판정
                 if (data.attackerHP <= 0 || data.defenderHP <= 0) {
                     database.ref('battles/' + bId).off();
                     pvpListener = null;
@@ -642,7 +641,6 @@
         }
 
         function chooseStarter(index) {
-            // 📝 캐릭터 선택 후 트레이너 이름 받기
             const nameInput = prompt("📝 당신의 트레이너 이름을 적어주세요!", "트레이너");
             myTrainerName = nameInput ? nameInput.trim().substring(0, 8) : "트레이너";
 
@@ -876,12 +874,6 @@
             document.getElementById('player-hp-text').innerText = `${playerCurrentHP}/${playerMaxHP}`;
         }
 
-        function playHitEffect() {
-            document.body.classList.add('flash-hit');
-            document.getElementById('game-box').classList.add('shake');
-            setTimeout(() => { document.body.classList.remove('flash-hit'); document.getElementById('game-box').classList.remove('shake'); }, 150);
-        }
-
         function useTripleSkill(skillSlot) {
             if (!battleActive) return;
 
@@ -999,40 +991,53 @@
             alert("🍌 나나열매 투척 성공!"); updateInventoryUI(); updateCatchRateDisplay();
         }
 
+        /* 🔴 버그 수정 완료: internalId 비교를 객체 지향성으로 수정하여 포획 실패/성공 시의 맵 복귀 시퀀스 완전 보완 */
         function catchMonster() {
             if (!currentPokemon) return;
-            if (items[selectedBallType] <= 0) { alert("❌ 선택한 볼이 부족합니다!"); return; }
+            if (items[selectedBallType] <= 0) { alert("❌ 선택한 등급의 볼이 부족합니다!"); return; }
             items[selectedBallType]--; updateInventoryUI();
 
             let mult = selectedBallType === 'quickBalls' ? 1.3 : (selectedBallType === 'ultraBalls' ? 2.0 : 1.0);
             if (Math.random() <= Math.min(1.0, currentCatchRate * mult)) {
                 
+                // 그림자 분신 반전 연산
                 if (Math.random() < 0.25 && currentPokemon.name !== "메타몽") {
                     if (Math.random() < 0.5) {
-                        alert(`💨 "야생의 그림자 분신이었습니다! 배틀은 소멸합니다." ❌`);
+                        alert(`💨 번쩍...! 눈앞이 흐려집니다!\n\n"야생의 그림자 분신이었습니다! 대결 기록은 신기루처럼 완전히 무효 리셋됩니다!" ❌`);
                         if (isBattleWon && activePartner) activePartner.xp = Math.max(0, activePartner.xp - 40); 
-                        hidePokemon(); return;
+                        hidePokemon();
+                        return;
                     } else {
-                        alert(`💜 메타몽이 둔갑한 그림자였습니다! 🎉`);
+                        alert(`💜 앗! 메타몽이 둔갑한 그림자였습니다! 🎉`);
                         const ditto = pokemonDatabase.find(p => p.name === "메타몽");
                         myBag.push({ ...ditto, xp: 50, currentHP: ditto.hp, internalId: Date.now() });
-                        unlockedPokedex.add("메타몽"); updateBagUI(); hidePokemon(); return;
+                        unlockedPokedex.add("메타몽"); updateBagUI(); hidePokemon();
+                        return;
                     }
                 }
 
                 const captured = { ...currentPokemon, xp: 50, currentHP: currentPokemon.hp, internalId: Date.now() };
                 unlockedPokedex.add(captured.name);
+                
+                // 가방 내 같은 포켓몬이 있는지 체크
                 const existing = myBag.find(p => p.name === captured.name);
-                if (existing) { existing.xp = Math.min(100, (existing.xp || 0) + 50); alert(`🎯 [${captured.name}] 중복 포획! 경험치 누적 (+50)`); checkEvolution(existing); }
-                else { myBag.push(captured); alert(`🎯 GET! [${captured.name}] 포획 완료!`); }
+                if (existing) { 
+                    existing.xp = Math.min(100, (existing.xp || 0) + 50); 
+                    alert(`🎯 [${captured.name}] 중복 포획! 경험치 누적 (+50)`); 
+                    checkEvolution(existing); 
+                } else { 
+                    myBag.push(captured); 
+                    alert(`🎯 GET! [${captured.name}] 포획 완료!`); 
+                }
                 
                 updateBagUI(); hidePokemon();
             } else {
-                alert(`💨 포획 실패! 포켓몬이 연기처럼 도망쳤습니다! 😢`);
+                alert(`💨 콰광! 볼이 박살나며 포켓몬이 격렬하게 튀어나왔습니다!\n\n"포획에 실패하여 [${currentPokemon.name}]이(가) 연기처럼 도망쳤습니다!" 😢`);
                 hidePokemon();
             }
         }
 
+        /* 🧬 진화 관리 매칭 연산 수정 */
         function checkEvolution(pokemon) {
             if (pokemon.xp >= 100 && pokemon.evolTo) {
                 const next = pokemonDatabase.find(p => p.name === pokemon.evolTo);
@@ -1040,7 +1045,12 @@
                     alert(`✨ [${pokemon.name}]이(가) [${next.name}](으)로 진화했습니다! 🎉`);
                     pokemon.name = next.name; pokemon.img = next.img; pokemon.hp = next.hp; pokemon.currentHP = next.hp;
                     pokemon.skills = next.skills; pokemon.baseRate = next.baseRate; pokemon.evolTo = next.evolTo || null; pokemon.xp = 0; pokemon.type = next.type;
-                    unlockedPokedex.add(next.name); if (activePartner.internalId === pokemon.internalId) activePartner = pokemon;
+                    unlockedPokedex.add(next.name); 
+                    
+                    // 🛠️ 버그 방지: internalId를 직접 가리켜서 현재 활성화된 지휘 파트너 포인터를 실시간 치환 교체
+                    if (activePartner && activePartner.internalId === pokemon.internalId) {
+                        activePartner = pokemon;
+                    }
                     updateBagUI();
                 }
             }
