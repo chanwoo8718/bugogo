@@ -471,8 +471,6 @@
             });
         }
 
-        playerRef.onDisconnect().remove();
-
         function setupMultiplayerSync() {
             const container = document.getElementById('canvas-container');
             const playersRef = database.ref('players');
@@ -505,14 +503,12 @@
                 });
             });
 
-            // 실시간 PVP 신청 수신 라이브 감시자
             database.ref('battles').on('value', (snapshot) => {
                 const battles = snapshot.val() || {};
                 Object.keys(battles).forEach(bId => {
                     const bData = battles[bId];
                     if (bData.defender === myClientId && bData.status === "pending") {
                         
-                        // 🛡️ 안전장치: 싱글 배틀 및 싱글 포획 활성화 중에는 강제 차단 및 소멸
                         if (isSpawned || battleActive) {
                             database.ref('battles/' + bId).remove(); 
                             return;
@@ -544,7 +540,7 @@
                 return;
             }
             if (battleActive || isSpawned) {
-                alert("⚠️ 조우 상황 혹은 대결 중에는 결투를 신청할 수 없습니다.");
+                alert("⚠️ 야생 포켓몬 조우 혹은 대결 중에는 결투를 신청할 수 없습니다.");
                 return;
             }
             const bId = `pvp_${myClientId}_${targetId}`;
@@ -867,7 +863,6 @@
             });
         }
 
-        /* 🛠 수정 완료: 원래 이름인 startSkillBattle로 통합 수복 매칭 */
         function startSkillBattle() {
             if (!currentPokemon || !activePartner) return;
             if (activePartner.currentHP <= 0) { alert("❌ 기력이 부족합니다!"); return; }
@@ -900,12 +895,6 @@
             document.getElementById('enemy-hp-text').innerText = `${enemyCurrentHP}/${enemyMaxHP}`;
             document.getElementById('player-hp-bar').style.width = `${(playerCurrentHP / playerMaxHP) * 100}%`;
             document.getElementById('player-hp-text').innerText = `${playerCurrentHP}/${playerMaxHP}`;
-        }
-
-        function playHitEffect() {
-            document.body.classList.add('flash-hit');
-            document.getElementById('game-box').classList.add('shake');
-            setTimeout(() => { document.body.classList.remove('flash-hit'); document.getElementById('game-box').classList.remove('shake'); }, 150);
         }
 
         function useTripleSkill(skillSlot) {
@@ -945,7 +934,6 @@
                 return; 
             }
 
-            // --- 싱글 배틀 분기 ---
             let dmg = 0; let logMsg = "";
             if (skillSlot === 3) {
                 if ((activePartner.xp || 0) < 15) { alert(`❌ 진화 경험치가 부족합니다!`); return; }
@@ -1003,6 +991,10 @@
             let mult = selectedBallType === 'quickBalls' ? 1.3 : (selectedBallType === 'ultraBalls' ? 2.0 : 1.0);
             document.getElementById('catch-rate-info').innerText = `선택한 볼 포획 확률: ${Math.round(Math.min(1.0, currentCatchRate * mult) * 100)}%`;
             document.getElementById('catch-rate-info').style.display = 'block';
+        }
+
+        function escapeFromEncounter() {
+            if (confirm("정말로 도망치시겠습니까?")) { hidePokemon(); }
         }
 
         function hidePokemon() {
