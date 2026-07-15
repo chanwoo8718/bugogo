@@ -291,13 +291,13 @@
             
             <div id="controller">
                 <div class="ctrl-btn empty"></div>
-                <button class="ctrl-btn" onmousedown="startMoving('up')" onmouseup="stopMoving()" ontouchstart="startMoving('up')" ontouchend="stopMoving()">▲</button>
+                <button class="ctrl-btn" onmousedown="startMoving('up')" onmouseup="stopMoving()" ontouchstart="startMoving('up')" ontouchein="stopMoving()">▲</button>
                 <div class="ctrl-btn empty"></div>
-                <button class="ctrl-btn" onmousedown="startMoving('left')" onmouseup="stopMoving()" ontouchstart="startMoving('left')" ontouchend="stopMoving()">◀</button>
+                <button class="ctrl-btn" onmousedown="startMoving('left')" onmouseup="stopMoving()" ontouchstart="startMoving('left')" ontouchein="stopMoving()">◀</button>
                 <div class="ctrl-btn empty"></div>
-                <button class="ctrl-btn" onmousedown="startMoving('right')" onmouseup="stopMoving()" ontouchstart="startMoving('right')" ontouchend="stopMoving()">▶</button>
+                <button class="ctrl-btn" onmousedown="startMoving('right')" onmouseup="stopMoving()" ontouchstart="startMoving('right')" ontouchein="stopMoving()">▶</button>
                 <div class="ctrl-btn empty"></div>
-                <button class="ctrl-btn" onmousedown="startMoving('down')" onmouseup="stopMoving()" ontouchstart="startMoving('down')" ontouchend="stopMoving()">▼</button>
+                <button class="ctrl-btn" onmousedown="startMoving('down')" onmouseup="stopMoving()" ontouchstart="startMoving('down')" ontouchein="stopMoving()">▼</button>
                 <div class="ctrl-btn empty"></div>
             </div>
         </div>
@@ -358,14 +358,14 @@
         // 🔒 [중요] 여기에 내 Firebase Config Key를 붙여넣어 줘!
         // ==========================================
         const firebaseConfig = {
-  apiKey: "AIzaSyD-5ptfN1Y7b-lsBJCZQGC06ZoZKNUUrp8",
-  authDomain: "bugo-1b2cb.firebaseapp.com",
-  databaseURL: "https://bugo-1b2cb-default-rtdb.firebaseio.com",
-  projectId: "bugo-1b2cb",
-  storageBucket: "bugo-1b2cb.firebasestorage.app",
-  messagingSenderId: "30795057635",
-  appId: "1:30795057635:web:56b990f9f2f7e22d2f38d6"
-};
+              apiKey: "AIzaSyD-5ptfN1Y7b-lsBJCZQGC06ZoZKNUUrp8",
+              authDomain: "bugo-1b2cb.firebaseapp.com",
+              databaseURL: "https://bugo-1b2cb-default-rtdb.firebaseio.com",
+              projectId: "bugo-1b2cb",
+              storageBucket: "bugo-1b2cb.firebasestorage.app",
+              messagingSenderId: "30795057635",
+              appId: "1:30795057635:web:56b990f9f2f7e22d2f38d6"
+            };
 
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
@@ -428,6 +428,16 @@
 
         const grassPatches = [];
 
+        // 🛠️ 버그 수정: 누락되었던 playHitEffect() 피격 물리 이펙트 완벽 이식 및 생성
+        function playHitEffect() {
+            document.body.classList.add('flash-hit');
+            document.getElementById('game-box').classList.add('shake');
+            setTimeout(() => { 
+                document.body.classList.remove('flash-hit'); 
+                document.getElementById('game-box').classList.remove('shake'); 
+            }, 150);
+        }
+
         function createGrassMap() {
             const container = document.getElementById('canvas-container');
             for(let i=0; i<25; i++) {
@@ -470,6 +480,8 @@
                 lastActive: Date.now()
             });
         }
+
+        playerRef.onDisconnect().remove();
 
         function setupMultiplayerSync() {
             const container = document.getElementById('canvas-container');
@@ -540,7 +552,7 @@
                 return;
             }
             if (battleActive || isSpawned) {
-                alert("⚠️ 야생 포켓몬 조우 혹은 대결 중에는 결투를 신청할 수 없습니다.");
+                alert("⚠️ 조우 상황 혹은 대결 중에는 결투를 신청할 수 없습니다.");
                 return;
             }
             const bId = `pvp_${myClientId}_${targetId}`;
@@ -890,13 +902,6 @@
             updateBattleHPBars();
         }
 
-        function updateBattleHPBars() {
-            document.getElementById('enemy-hp-bar').style.width = `${(enemyCurrentHP / enemyMaxHP) * 100}%`;
-            document.getElementById('enemy-hp-text').innerText = `${enemyCurrentHP}/${enemyMaxHP}`;
-            document.getElementById('player-hp-bar').style.width = `${(playerCurrentHP / playerMaxHP) * 100}%`;
-            document.getElementById('player-hp-text').innerText = `${playerCurrentHP}/${playerMaxHP}`;
-        }
-
         function useTripleSkill(skillSlot) {
             if (!battleActive) return;
 
@@ -987,34 +992,8 @@
             }
         }
 
-        function updateCatchRateDisplay() {
-            let mult = selectedBallType === 'quickBalls' ? 1.3 : (selectedBallType === 'ultraBalls' ? 2.0 : 1.0);
-            document.getElementById('catch-rate-info').innerText = `선택한 볼 포획 확률: ${Math.round(Math.min(1.0, currentCatchRate * mult) * 100)}%`;
-            document.getElementById('catch-rate-info').style.display = 'block';
-        }
-
         function escapeFromEncounter() {
             if (confirm("정말로 도망치시겠습니까?")) { hidePokemon(); }
-        }
-
-        function hidePokemon() {
-            battleActive = false; document.getElementById('radar').style.display = 'none';
-            document.getElementById('monster-img').style.display = 'none'; document.getElementById('monster-name').style.display = 'none';
-            document.getElementById('catch-rate-info').style.display = 'none'; document.getElementById('ball-selector-ui').style.display = 'none';
-            document.getElementById('battle-btn').style.display = 'none'; document.getElementById('skill-box').style.display = 'none';
-            document.getElementById('catch-btn').style.display = 'none'; document.getElementById('berry-btn').style.display = 'none';
-            document.getElementById('escape-btn').style.display = 'none'; isSpawned = false;
-
-            document.getElementById('map-area').style.display = 'block';
-            document.getElementById('screen-title').innerText = "🗺️ 미니 오픈월드 탐색";
-            document.getElementById('status').innerText = "🧭 D-Pad를 눌러 입체 필드를 탐색하세요!";
-        }
-
-        function feedBerry() {
-            if (!currentPokemon || berryUsed) return;
-            if (items.berries <= 0) { alert("❌ 나나열매 부족!"); return; }
-            items.berries--; currentCatchRate = Math.min(1.0, currentCatchRate + 0.25); berryUsed = true;
-            alert("🍌 나나열매 투척 성공!"); updateInventoryUI(); updateCatchRateDisplay();
         }
 
         function catchMonster() {
